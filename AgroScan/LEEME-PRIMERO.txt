@@ -1,0 +1,38 @@
+AGROSCAN - PROYECTO COMPLETO
+
+1. Extrae TODO el ZIP. No ejecutes archivos dentro de la carpeta comprimida.
+2. Instala Node.js 24.15 o superior de la rama 24 si no lo tienes.
+3. Dentro de la carpeta AgroScan extraida, haz doble clic en INICIAR-AGROSCAN.cmd.
+   La primera vez instala las dependencias; necesita Internet.
+4. Cuando aparezca Local, abre http://127.0.0.1:4201/ en tu navegador.
+5. Mantén abierta la terminal. Para detener el servidor pulsa Ctrl+C.
+
+ALTERNATIVA CON POWERSHELL
+Abre PowerShell dentro de la carpeta AgroScan que contiene package.json:
+  npm ci
+  npm start -- --host 127.0.0.1 --port 4201
+
+Si el puerto 4201 esta ocupado por una copia anterior, detén esa copia con
+Ctrl+C en su terminal o usa otro puerto:
+  npm start -- --host 127.0.0.1 --port 4202
+En ese caso abre http://127.0.0.1:4202/.
+No abras index.html con doble clic: la aplicacion requiere el servidor.
+
+GOOGLE MAPS
+Edita public/config.json y coloca tu clave en googleMapsApiKey.
+El archivo incluido tiene la clave vacia. Las instrucciones de APIs,
+facturacion y restricciones de dominio estan en README.md.
+Autoriza el puerto utilizado en tu clave. Recarga la pagina tras configurarla.
+
+CONTENIDO
+Codigo Angular y TypeScript completo, estilos, pruebas, imagenes PNG
+originales y WebP optimizadas, configuracion y documentacion con capturas.
+package-lock.json permite instalar las dependencias exactas con npm ci.
+No se incluyen node_modules, caches, historial Git, claves personales ni
+compilaciones temporales; se regeneran con los comandos del README.
+
+COMPROBAR O COMPILAR
+  npm test -- --watch=false
+  npm run build
+La compilacion se genera en dist/agroscan/browser/.
+Ver docs/verification.md para resultados de la verificacion previa y limites.

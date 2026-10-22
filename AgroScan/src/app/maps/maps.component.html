@@ -1,0 +1,448 @@
+<section id="mapa" class="map-section" aria-labelledby="map-heading">
+  <div class="container">
+    <div class="section-heading">
+      <div>
+        <span class="eyebrow">TU TIERRA, EN PERSPECTIVA</span>
+        <h2 id="map-heading">Cada parcela cuenta.</h2>
+        <p>Encuentra tu terreno, traza sus límites y conoce su superficie.</p>
+      </div>
+      <div class="saved-count">
+        <app-icon name="layers" [size]="19" /><span
+          ><strong>{{ parcels.parcels().length }}</strong> parcelas guardadas</span
+        >
+      </div>
+    </div>
+
+    <div class="workspace">
+      <div class="map-column">
+        <div class="map-searchbar">
+          <form class="location-search" (ngSubmit)="searchLocation()">
+            <app-icon name="search" [size]="18" />
+            <input
+              id="location-search"
+              aria-label="Buscar dirección o coordenadas"
+              name="location"
+              [(ngModel)]="search"
+              placeholder="Busca un lugar o escribe latitud, longitud"
+              [disabled]="!ready()"
+            />
+            <button
+              type="submit"
+              class="search-submit"
+              [disabled]="!ready() || searching() || !search.trim()"
+            >
+              {{ searching() ? 'Buscando…' : 'Buscar' }}
+            </button>
+          </form>
+          <button
+            type="button"
+            class="icon-button locate-button"
+            [disabled]="!ready() || locating()"
+            (click)="locateUser()"
+            [attr.aria-label]="locating() ? 'Obteniendo ubicación' : 'Usar mi ubicación'"
+            title="Mi ubicación"
+          >
+            <app-icon name="location" [size]="20" />
+          </button>
+        </div>
+        <div class="map-stage">
+          <div
+            #mapCanvas
+            class="google-map"
+            aria-label="Mapa interactivo para delimitar parcelas"
+          ></div>
+          @if (!ready()) {
+            <div class="map-empty">
+              <div class="empty-map-icon">
+                <app-icon [name]="loader.status() === 'loading' ? 'loader' : 'map'" [size]="36" />
+              </div>
+              @if (loader.status() === 'loading' || loader.status() === 'idle') {
+                <h3>Abriendo una nueva perspectiva</h3>
+                <p role="status">Conectando con Google Maps…</p>
+              } @else {
+                <span class="empty-eyebrow">GOOGLE MAPS</span>
+                <h3>El mapa está por conectar.</h3>
+                <p role="alert">{{ loader.error() }}</p>
+                <button type="button" class="button button-secondary" (click)="initGoogleMap()">
+                  <app-icon name="globe" [size]="17" /> Reintentar conexión
+                </button>
+              }
+              <div class="empty-map-features">
+                <span><app-icon name="polygon" [size]="15" /> Delimita</span
+                ><span><app-icon name="layers" [size]="15" /> Calcula</span
+                ><span><app-icon name="leaf" [size]="15" /> Cultiva</span>
+              </div>
+            </div>
+          } @else {
+            <div class="map-switch" aria-label="Tipo de mapa">
+              <button
+                type="button"
+                [class.active]="!satellite()"
+                [attr.aria-pressed]="!satellite()"
+                (click)="setMapType(false)"
+              >
+                Mapa</button
+              ><button
+                type="button"
+                [class.active]="satellite()"
+                [attr.aria-pressed]="satellite()"
+                (click)="setMapType(true)"
+              >
+                Satélite
+              </button>
+            </div>
+            @if (mode() === 'draw') {
+              <div class="drawing-badge">
+                <span></span> Delimitando · {{ points().length }} puntos
+              </div>
+            }
+          }
+        </div>
+        <div class="map-toolbar">
+          <div class="tool-actions">
+            <button
+              type="button"
+              class="tool-button"
+              [class.tool-active]="mode() === 'draw'"
+              [disabled]="!ready()"
+              (click)="startGooglePolygon()"
+            >
+              <app-icon name="plus" [size]="18" /> Nueva parcela
+            </button>
+            <span class="tool-divider"></span>
+            <button
+              type="button"
+              class="icon-button"
+              [disabled]="mode() !== 'draw' || additionCount() === 0"
+              (click)="undoPoint()"
+              aria-label="Deshacer último punto agregado"
+              title="Deshacer último punto"
+            >
+              <app-icon name="undo" [size]="19" />
+            </button>
+            <button
+              type="button"
+              class="icon-button"
+              [disabled]="mode() !== 'draw' || selectedVertex() === null"
+              (click)="removeVertex()"
+              aria-label="Eliminar punto seleccionado"
+              title="Eliminar punto seleccionado"
+            >
+              <app-icon name="minus" [size]="19" />
+            </button>
+            <button
+              type="button"
+              class="icon-button danger-tool"
+              [disabled]="mode() === 'idle'"
+              (click)="clearPolygon()"
+              aria-label="Borrar delimitación del editor"
+              title="Borrar delimitación"
+            >
+              <app-icon name="trash" [size]="18" />
+            </button>
+          </div>
+          @if (mode() === 'draw') {
+            <button
+              type="button"
+              class="finish-button"
+              [disabled]="!canFinish()"
+              (click)="finishPolygon()"
+            >
+              <app-icon name="check" [size]="17" /> Finalizar
+            </button>
+          } @else if (mode() === 'review') {
+            <button
+              type="button"
+              class="finish-button"
+              [disabled]="!ready()"
+              (click)="editPolygon()"
+            >
+              <app-icon name="edit" [size]="17" /> Editar límites
+            </button>
+          }
+        </div>
+        <p class="map-hint">
+          <app-icon name="info" [size]="15" />
+          {{
+            mode() === 'draw'
+              ? 'Toca un vértice para seleccionarlo y usa − para quitarlo. Arrastra los puntos para ajustar.'
+              : 'Traza al menos 3 puntos. También puedes introducir coordenadas y editar cada vértice.'
+          }}
+        </p>
+      </div>
+
+      <aside class="parcel-panel" aria-labelledby="parcel-heading">
+        <div class="panel-heading">
+          <div class="panel-icon"><app-icon name="polygon" [size]="21" /></div>
+          <div>
+            <h3 id="parcel-heading">Tu parcela</h3>
+            <p>
+              {{
+                mode() === 'idle'
+                  ? 'Dale forma a tu próximo cultivo'
+                  : dirty()
+                    ? 'Cambios sin guardar'
+                    : selectedId()
+                      ? 'Guardada en este navegador'
+                      : 'Nueva delimitación'
+              }}
+            </p>
+          </div>
+        </div>
+        <div class="area-display" aria-live="polite" aria-atomic="true">
+          <span>SUPERFICIE DE LA PARCELA</span>
+          <div>
+            <strong>{{ area() ? (area() / 10000 | number: '1.2-4') : '—' }}</strong
+            ><span class="hectares">ha</span>
+          </div>
+          <small>{{
+            area() ? (area() | number: '1.0-2') + ' m²' : 'Delimita para calcular la superficie'
+          }}</small>
+          <div class="area-rule"></div>
+          <span class="point-count"
+            ><app-icon name="polygon" [size]="14" /> {{ points().length }} puntos de
+            referencia</span
+          >
+        </div>
+
+        @if (mode() !== 'idle') {
+          <div class="parcel-form">
+            <label for="parcel-name">Nombre de la parcela</label
+            ><input
+              id="parcel-name"
+              maxlength="80"
+              placeholder="Ej. Parcela Los Olivos"
+              [ngModel]="name()"
+              (ngModelChange)="updateName($event)"
+            />
+            <label for="parcel-crop">Cultivo asociado</label
+            ><select id="parcel-crop" [ngModel]="cropId()" (ngModelChange)="updateCrop($event)">
+              <option value="">Selecciona un cultivo</option>
+              @for (crop of crops.crops; track crop.id) {
+                <option [value]="crop.id">{{ crop.name }}</option>
+              }
+            </select>
+            <span class="field-label">Color de identificación</span>
+            <div class="color-options" role="group" aria-label="Color de la parcela">
+              @for (option of colors; track option; let index = $index) {
+                <button
+                  type="button"
+                  class="color-option"
+                  [style.--parcel-color]="option"
+                  [class.selected]="color() === option"
+                  [attr.aria-pressed]="color() === option"
+                  [attr.aria-label]="'Color ' + (index + 1)"
+                  (click)="updateColor(option)"
+                >
+                  @if (color() === option) {
+                    <app-icon name="check" [size]="14" />
+                  }
+                </button>
+              }
+            </div>
+            <button
+              type="button"
+              class="button button-primary save-button"
+              [disabled]="mode() !== 'review' || !ready() || parcels.corrupt()"
+              (click)="saveParcel()"
+            >
+              <app-icon name="save" [size]="17" />
+              {{ selectedId() ? 'Guardar cambios' : 'Guardar parcela' }}
+            </button>
+            @if (mode() === 'draw') {
+              <p class="small-hint">Finaliza los límites para guardar la parcela.</p>
+            }
+          </div>
+        } @else {
+          <div class="start-guide">
+            <h4>Unos puntos, muchas posibilidades.</h4>
+            <p>Ubica tu terreno y selecciona «Nueva parcela» para comenzar a dibujar.</p>
+            <button
+              type="button"
+              class="button button-primary save-button"
+              [disabled]="!ready()"
+              (click)="startGooglePolygon()"
+            >
+              <app-icon name="plus" [size]="18" /> Delimitar mi parcela
+            </button>
+          </div>
+        }
+        @if (selectedCrop(); as crop) {
+          <a class="associated-crop" href="#cultivos"
+            ><img [src]="crop.image" [alt]="crop.name" (error)="imageFallback($event)" /><span
+              ><small>{{
+                mode() === 'idle' ? 'CULTIVO SELECCIONADO' : 'RECOMENDACIÓN DE RIEGO'
+              }}</small
+              ><strong>{{ crop.name }}</strong
+              ><span>{{ crop.irrigation }}</span></span
+            ><app-icon name="arrow-up-right" [size]="17"
+          /></a>
+        }
+        <p class="local-note">
+          <app-icon name="info" [size]="13" /> Tus parcelas se guardan solo en este navegador.
+        </p>
+      </aside>
+    </div>
+
+    <div class="feedback" aria-live="polite">
+      @if (notice()) {
+        <p class="success-message"><app-icon name="check" [size]="17" /> {{ notice() }}</p>
+      }
+    </div>
+    @if (error()) {
+      <p class="error-message" role="alert">
+        <app-icon name="warning" [size]="18" /> {{ error() }}
+      </p>
+    }
+    @if (parcels.error()) {
+      <div class="error-message" role="alert">
+        <app-icon name="warning" [size]="18" /><span>{{ parcels.error() }}</span>
+        @if (parcels.corrupt()) {
+          <button type="button" (click)="resetStorage()">Restablecer almacenamiento</button>
+        }
+      </div>
+    }
+
+    @if (mode() === 'draw') {
+      <details class="vertex-editor">
+        <summary>
+          <app-icon name="edit" [size]="16" /> Edición precisa de puntos
+          <span>{{ points().length }} vértices</span>
+        </summary>
+        <p>
+          Edita coordenadas con punto decimal. Los cambios que cruzan límites se rechazan
+          automáticamente.
+        </p>
+        <div class="vertex-list">
+          @for (point of points(); track $index; let index = $index) {
+            <div class="vertex-row" [class.vertex-selected]="selectedVertex() === index">
+              <button
+                type="button"
+                class="vertex-number"
+                [attr.aria-label]="'Seleccionar punto ' + (index + 1)"
+                [attr.aria-pressed]="selectedVertex() === index"
+                (click)="selectVertex(index)"
+              >
+                {{ index + 1 }}
+              </button>
+              <label
+                >Latitud<input
+                  #vertexLat
+                  type="number"
+                  step="any"
+                  min="-85"
+                  max="85"
+                  [value]="point.lat"
+                  [attr.aria-label]="'Latitud del punto ' + (index + 1)"
+              /></label>
+              <label
+                >Longitud<input
+                  #vertexLng
+                  type="number"
+                  step="any"
+                  min="-180"
+                  max="180"
+                  [value]="point.lng"
+                  [attr.aria-label]="'Longitud del punto ' + (index + 1)"
+              /></label>
+              <button
+                type="button"
+                class="icon-button"
+                [attr.aria-label]="'Aplicar coordenadas del punto ' + (index + 1)"
+                title="Aplicar coordenadas"
+                (click)="updateVertex(index, vertexLat.value, vertexLng.value)"
+              >
+                <app-icon name="check" [size]="18" />
+              </button>
+              <button
+                type="button"
+                class="icon-button danger-tool"
+                [attr.aria-label]="'Eliminar punto ' + (index + 1)"
+                (click)="removeVertex(index)"
+              >
+                <app-icon name="trash" [size]="17" />
+              </button>
+            </div>
+          }
+        </div>
+        <form class="add-coordinate" (ngSubmit)="addCoordinate()">
+          <label
+            >Latitud<input
+              type="number"
+              name="latitude"
+              step="any"
+              min="-85"
+              max="85"
+              [(ngModel)]="newLatitude"
+              placeholder="20.6597"
+              required /></label
+          ><label
+            >Longitud<input
+              type="number"
+              name="longitude"
+              step="any"
+              min="-180"
+              max="180"
+              [(ngModel)]="newLongitude"
+              placeholder="-103.3496"
+              required /></label
+          ><button type="submit" class="button button-secondary">
+            <app-icon name="plus" [size]="16" /> Agregar punto
+          </button>
+        </form>
+      </details>
+    }
+
+    <div class="saved-parcels">
+      <div class="saved-heading">
+        <h3>
+          Mis parcelas <span>{{ parcels.parcels().length }}</span>
+        </h3>
+        <p>{{ totalArea() / 10000 | number: '1.2-4' }} ha en total</p>
+      </div>
+      @if (parcels.parcels().length) {
+        <div class="parcel-list">
+          @for (parcel of parcels.parcels(); track parcel.id) {
+            <article
+              class="saved-parcel"
+              [class.is-selected]="selectedId() === parcel.id"
+              [style.--parcel-color]="parcel.color"
+            >
+              <button
+                type="button"
+                class="parcel-select"
+                (click)="selectParcel(parcel)"
+                [attr.aria-pressed]="selectedId() === parcel.id"
+              >
+                <span class="parcel-swatch"><app-icon name="polygon" [size]="21" /></span
+                ><span
+                  ><strong>{{ parcel.name }}</strong
+                  ><small
+                    >{{ cropName(parcel.cropId) }} ·
+                    {{ parcel.areaM2 / 10000 | number: '1.2-4' }} ha</small
+                  ></span
+                ></button
+              ><button
+                type="button"
+                class="icon-button danger-tool"
+                [attr.aria-label]="'Eliminar parcela ' + parcel.name"
+                (click)="deleteParcel(parcel)"
+              >
+                <app-icon name="trash" [size]="17" />
+              </button>
+            </article>
+          }
+        </div>
+      } @else {
+        <p class="no-parcels">
+          <app-icon name="sprout" [size]="20" /> Aquí crecerá tu colección de parcelas. Guarda la
+          primera para comenzar.
+        </p>
+      }
+    </div>
+    <p class="measurement-note">
+      Superficies geográficas aproximadas para planificación agrícola. No sustituyen un
+      levantamiento topográfico.
+    </p>
+  </div>
+</section>

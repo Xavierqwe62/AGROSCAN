@@ -1,0 +1,174 @@
+<section id="cultivos" class="crop-library" aria-labelledby="library-title">
+  <div class="container">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow"><span></span> CONOCE LO QUE CULTIVAS</p>
+        <h2 id="library-title">Cada cultivo, un mundo por descubrir.</h2>
+        <p class="section-description">
+          Encuentra tu próximo cultivo y conoce lo que necesita para crecer.
+        </p>
+      </div>
+      <span class="catalog-count"
+        ><app-icon name="leaf" [size]="18" /> {{ cropsService.crops.length }} cultivos para
+        explorar</span
+      >
+    </div>
+
+    <div class="library-toolbar">
+      <div class="category-filters" role="group" aria-label="Filtrar cultivos por categoría">
+        @for (item of categories; track item) {
+          <button
+            type="button"
+            [class.active]="category() === item"
+            [attr.aria-pressed]="category() === item"
+            (click)="category.set(item)"
+          >
+            {{ item }}
+          </button>
+        }
+      </div>
+      <label class="library-search">
+        <app-icon name="search" [size]="18" />
+        <input
+          type="search"
+          placeholder="Buscar un cultivo…"
+          aria-label="Buscar en la biblioteca de cultivos"
+          [value]="cropsService.search()"
+          (input)="setSearch($event)"
+        />
+      </label>
+    </div>
+
+    <div class="results-row">
+      <p aria-live="polite">
+        Mostrando <strong>{{ filteredCrops().length }}</strong> de
+        {{ cropsService.crops.length }} cultivos
+      </p>
+      <span><app-icon name="info" [size]="14" /> Información agrícola de referencia</span>
+    </div>
+
+    <div class="crop-grid">
+      @for (crop of filteredCrops(); track crop.id) {
+        <article
+          class="crop-card"
+          [class.is-selected]="cropsService.selectedCrop()?.id === crop.id"
+          [attr.aria-labelledby]="'crop-title-' + crop.id"
+        >
+          <div class="crop-image" [attr.data-crop]="crop.id">
+            <img
+              [src]="crop.image"
+              [alt]="'Ilustración de ' + crop.name + ' en capas de papel'"
+              width="600"
+              height="400"
+              loading="lazy"
+              decoding="async"
+              (error)="imageFallback($event)"
+            />
+            <span class="category-label">{{ crop.category }}</span>
+            @if (cropsService.selectedCrop()?.id === crop.id) {
+              <span class="selected-badge" aria-label="Cultivo seleccionado"
+                ><app-icon name="check" [size]="15"
+              /></span>
+            }
+          </div>
+          <div class="card-content">
+            <div class="crop-title-row">
+              <h3 [id]="'crop-title-' + crop.id">{{ crop.name }}</h3>
+              <span>{{ crop.scientificName }}</span>
+            </div>
+            <p class="crop-description">{{ crop.description }}</p>
+            <dl class="crop-stats">
+              <div>
+                <dt><app-icon name="sun" [size]="15" /> Clima / temperatura</dt>
+                <dd>{{ crop.temperature }}</dd>
+              </div>
+              <div>
+                <dt><app-icon name="drop" [size]="15" /> Humedad del suelo</dt>
+                <dd>{{ crop.humidity }}</dd>
+              </div>
+              <div>
+                <dt><app-icon name="sprout" [size]="15" /> Suelo recomendado</dt>
+                <dd>{{ crop.soil }}</dd>
+              </div>
+              <div>
+                <dt><app-icon name="flask" [size]="15" /> pH de referencia</dt>
+                <dd>{{ crop.ph }}</dd>
+              </div>
+            </dl>
+
+            <button
+              class="details-toggle"
+              type="button"
+              [attr.aria-label]="'Cuidados y etapas de ' + crop.name"
+              [attr.aria-expanded]="expandedCrop() === crop.id"
+              [attr.aria-controls]="'crop-details-' + crop.id"
+              (click)="toggleDetails(crop.id)"
+            >
+              {{ expandedCrop() === crop.id ? 'Menos información' : 'Ver cuidados y etapas' }}
+              <app-icon
+                name="chevron-down"
+                [size]="16"
+                [class.rotated]="expandedCrop() === crop.id"
+              />
+            </button>
+            <div
+              class="crop-details"
+              [id]="'crop-details-' + crop.id"
+              [hidden]="expandedCrop() !== crop.id"
+            >
+              <h4>Riego</h4>
+              <p>{{ crop.irrigation }}</p>
+              <h4>Conductividad eléctrica (CE)</h4>
+              <p class="ec-value">{{ crop.ec }}</p>
+              <p class="reference-explainer">
+                Umbral orientativo de salinidad ECe en extracto de pasta saturada del suelo. No es
+                un objetivo de fertirriego.
+              </p>
+              <h4>Etapas de crecimiento</h4>
+              <ol class="growth-stages">
+                @for (stage of crop.stages; track stage) {
+                  <li>{{ stage }}</li>
+                }
+              </ol>
+              <div class="crop-sources">
+                <h4>Fuentes de consulta</h4>
+                @for (source of crop.sources; track source.url) {
+                  <a [href]="source.url" target="_blank" rel="noopener noreferrer"
+                    >{{ source.label }} <span aria-hidden="true">↗</span
+                    ><span class="sr-only"> (abre en otra pestaña)</span></a
+                  >
+                }
+              </div>
+            </div>
+            <a
+              href="#mapa"
+              class="select-crop"
+              [attr.aria-label]="'Seleccionar ' + crop.name + ' para una parcela e ir al mapa'"
+              (click)="cropsService.selectCrop(crop.id)"
+            >
+              {{
+                cropsService.selectedCrop()?.id === crop.id
+                  ? 'Usar en mi parcela'
+                  : 'Seleccionar cultivo'
+              }}
+              <app-icon name="arrow-right" [size]="16" />
+            </a>
+          </div>
+        </article>
+      } @empty {
+        <div class="empty-state">
+          <span class="empty-icon"><app-icon name="sprout" [size]="32" /></span>
+          <h3>No encontramos ese cultivo</h3>
+          <p>Prueba con otro nombre o explora todas las categorías.</p>
+          <button type="button" class="button button-secondary" (click)="resetFilters()">
+            Ver todos los cultivos
+          </button>
+        </div>
+      }
+    </div>
+    <p class="reference-note">
+      <app-icon name="info" [size]="17" /> Estas referencias varían con la variedad, el clima y el
+      suelo. Adapta el manejo a tu parcela y consulta las fuentes de cada ficha.
+    </p>
+  </div>
+</section>

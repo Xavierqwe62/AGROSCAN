@@ -1,0 +1,66 @@
+<header class="site-header" (keydown.escape)="menuOpen.set(false); preview.set(null)">
+  <div class="container header-inner">
+    <a href="#inicio" class="brand" aria-label="AgroScan, inicio" (click)="navigate('inicio')"
+      ><span class="brand-mark"><app-icon name="sprout" [size]="24" /></span
+      ><span>Agro<span class="brand-light">Scan</span><span class="brand-dot">.</span></span></a
+    >
+    <button
+      class="mobile-toggle"
+      type="button"
+      (click)="menuOpen.set(!menuOpen())"
+      [attr.aria-expanded]="menuOpen()"
+      aria-controls="main-navigation"
+      aria-label="Abrir o cerrar navegación"
+    >
+      <app-icon [name]="menuOpen() ? 'close' : 'menu'" />
+    </button>
+    <nav id="main-navigation" aria-label="Navegación principal" [class.open]="menuOpen()">
+      @for (link of links; track link.id) {
+        <div class="nav-item" (mouseenter)="showPreview(link.id)" (mouseleave)="preview.set(null)">
+          <a
+            [href]="'#' + link.id"
+            [class.active]="activeSection() === link.id"
+            [attr.aria-current]="activeSection() === link.id ? 'location' : null"
+            (click)="navigate(link.id)"
+            (focus)="preview.set(link.id)"
+            (blur)="preview.set(null)"
+            ><app-icon [name]="link.icon" [size]="16" />{{ link.label }}</a
+          >
+          <button
+            class="preview-toggle"
+            type="button"
+            [attr.aria-label]="'Información de ' + link.label"
+            [attr.aria-expanded]="preview() === link.id"
+            [attr.aria-controls]="'preview-' + link.id"
+            (click)="preview.set(preview() === link.id ? null : link.id)"
+          >
+            <app-icon name="chevron-down" [size]="14" />
+          </button>
+          <div
+            [id]="'preview-' + link.id"
+            class="nav-preview"
+            [class.visible]="preview() === link.id"
+            [attr.aria-hidden]="preview() !== link.id"
+          >
+            <span class="preview-icon"><app-icon [name]="link.icon" [size]="24" /></span
+            ><strong>{{ link.label }}</strong>
+            <p>{{ link.text }}</p>
+          </div>
+        </div>
+      }
+    </nav>
+    <form class="header-search" role="search" (ngSubmit)="search()">
+      <label class="sr-only" for="header-crop-search">Buscar cultivos en la biblioteca</label
+      ><app-icon name="search" [size]="17" /><input
+        id="header-crop-search"
+        name="cropSearch"
+        type="search"
+        placeholder="Buscar un cultivo…"
+        [ngModel]="crops.search()"
+        (ngModelChange)="crops.search.set($event)"
+      /><button type="submit" aria-label="Ver resultados de cultivos">
+        <app-icon name="arrow-right" [size]="17" />
+      </button>
+    </form>
+  </div>
+</header>
